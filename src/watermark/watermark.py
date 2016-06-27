@@ -130,7 +130,7 @@ def main():
             logging.error(e)
             if args.debug:
                 raise e
-    else:
+    elif args.action == 'batch':
         logging.info('Processing files in directory {}'.format(args.source_dir))
         for file_name in os.listdir(args.source_dir):
             file_path = os.path.join(args.source_dir, file_name)
