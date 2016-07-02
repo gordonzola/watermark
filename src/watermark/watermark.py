@@ -20,27 +20,28 @@ from PIL import Image
 logging.basicConfig(level=logging.INFO)
 
 
-def process_image(source, output, watermark, thumbnail, opacity):
+def process_image(source, output, watermark, thumbnail, crop, opacity):
     source = Image.open(source)
     if source.mode != 'RGBA':
         source = source.convert('RGBA')
     if thumbnail:
-        thumb_ratio = thumbnail[0] / thumbnail[1]
-        source_ratio = source.size[0] / source.size[1]
-        if thumb_ratio != source_ratio:
-            if source_ratio > thumb_ratio:
-                thumb_y = source.size[1]
-                thumb_x = thumb_y * thumb_ratio
-                thumb_size = (thumb_x, thumb_y)
-            elif source_ratio < thumb_ratio:
-                thumb_x = source.size[0]
-                thumb_y = thumb_x / thumb_ratio
-                thumb_size = (thumb_x, thumb_y)
-            box = (source.size[0] / 2 - thumb_size[0] / 2,
-                   source.size[1] / 2 - thumb_size[1] / 2,
-                   source.size[0] / 2 + thumb_size[0] / 2,
-                   source.size[1] / 2 + thumb_size[1] / 2)
-            source = source.crop(box)
+        if crop:
+            thumb_ratio = thumbnail[0] / thumbnail[1]
+            source_ratio = source.size[0] / source.size[1]
+            if thumb_ratio != source_ratio:
+                if source_ratio > thumb_ratio:
+                    thumb_y = source.size[1]
+                    thumb_x = thumb_y * thumb_ratio
+                    thumb_size = (thumb_x, thumb_y)
+                elif source_ratio < thumb_ratio:
+                    thumb_x = source.size[0]
+                    thumb_y = thumb_x / thumb_ratio
+                    thumb_size = (thumb_x, thumb_y)
+                box = (source.size[0] / 2 - thumb_size[0] / 2,
+                       source.size[1] / 2 - thumb_size[1] / 2,
+                       source.size[0] / 2 + thumb_size[0] / 2,
+                       source.size[1] / 2 + thumb_size[1] / 2)
+                source = source.crop(box)
         source.thumbnail(thumbnail)
     s_xsize, s_ysize = source.size
     watermark = Image.open(watermark)
@@ -116,6 +117,8 @@ def main():
                             'opaque)')
         p.add_argument('--thumbnail', type=dimensions,
                        help='Generates a thumbnail (ex: 100x150)')
+        p.add_argument('--crop', action='store_true',
+                       help='Crops the thumbnail')
         p.add_argument('-d', '--debug', action='store_true',
                        help='Show debug exceptions')
 
@@ -125,13 +128,14 @@ def main():
         logging.info('Processing image {}'.format(args.source.name))
         try:
             process_image(args.source, args.output, args.watermark,
-                          args.thumbnail, args.opacity)
+                          args.thumbnail, args.crop, args.opacity)
         except Exception as e:
             logging.error(e)
             if args.debug:
                 raise e
     elif args.action == 'batch':
-        logging.info('Processing files in directory {}'.format(args.source_dir))
+        logging.info('Processing files in directory {}'
+                     .format(args.source_dir))
         for file_name in os.listdir(args.source_dir):
             file_path = os.path.join(args.source_dir, file_name)
             if os.path.isfile(file_path):
@@ -140,9 +144,10 @@ def main():
                     with open(file_path, 'rb') as source:
                         with open(output_path, 'wb') as output:
                             logging.info('Processing image {}'
-                                        .format(file_name))
+                                         .format(file_name))
                             process_image(source, output, args.watermark,
-                                          args.thumbnail, args.opacity)
+                                          args.thumbnail, args.crop,
+                                          args.opacity)
                 except Exception as e:
                     if os.path.isfile(output_path):
                         os.remove(output_path)
