@@ -106,6 +106,8 @@ def main():
                        help='Source directory')
     batch.add_argument('output_dir', type=arg_directory('w'),
                        help='Destination directory for watermarked images')
+    batch.add_argument('--override', action='store_true',
+                       help='Override existing output files')
 
     for p in [single, batch]:
         p.add_argument('-w', '--watermark', type=argparse.FileType(mode='rb'),
@@ -140,18 +142,20 @@ def main():
             file_path = os.path.join(args.source_dir, file_name)
             if os.path.isfile(file_path):
                 output_path = os.path.join(args.output_dir, file_name)
-                try:
-                    with open(file_path, 'rb') as source:
-                        with open(output_path, 'wb') as output:
-                            logging.info('Processing image {}'
-                                         .format(file_name))
-                            process_image(source, output, args.watermark,
-                                          args.thumbnail, args.crop,
-                                          args.opacity)
-                except Exception as e:
-                    if os.path.isfile(output_path):
-                        os.remove(output_path)
-                    logging.error(e)
+                if args.override or (not args.override
+                                     and not os.path.isfile(output_path)):
+                    try:
+                        with open(file_path, 'rb') as source:
+                            with open(output_path, 'wb') as output:
+                                logging.info('Processing image {}'
+                                             .format(file_name))
+                                process_image(source, output, args.watermark,
+                                              args.thumbnail, args.crop,
+                                              args.opacity)
+                    except Exception as e:
+                        if os.path.isfile(output_path):
+                            os.remove(output_path)
+                        logging.error(e)
 
 
 if __name__ == '__main__':
